@@ -15,59 +15,75 @@ INCLUDE Irvine32.inc
     playAgainPrompt BYTE "Do you want to play again? (y/n): ", 0
 
     guess DWORD ?
-    maxPlayers DWORD 10           ; Maximum allowed players
-    playerCount DWORD ?           ; Number of players
-    scores DWORD 10 DUP(0)        ; Array to store scores for each player
-    highScore DWORD 9999          ; Initial high score set to a large value
-    maxAttempts DWORD 5           ; Maximum attempts allowed per round
-    attempts DWORD ?              ; Current attempts count
-    secretNumber DWORD ?          ; Stores the randomly generated number
-    difficulty DWORD ?            ; Stores the chosen difficulty level
-    currentPlayer DWORD -1         ; Tracks whose turn it is
+    maxPlayers DWORD 10           
+    playerCount DWORD ?           
+    scores DWORD 10 DUP(0)       
+    highScore DWORD 9999          
+    maxAttempts DWORD 5           
+    attempts DWORD ?              
+    secretNumber DWORD ?          
+    difficulty DWORD ?            
+    currentPlayer DWORD -1         
 
 .code
 main PROC
-;mov currentPlayer,1
     call Clrscr
+    mov eax, 10
+    call setTextColor
     call displayIntro
 
 startGame:
-    ; Get the number of players
+;To get the number of players
+    mov eax, 11                 
+    call setTextColor
     call PlayerCountprocedure
+    mov eax, 14
+    call setTextColor
     call getPlayerCountInput
 
-    ; Display difficulty selection and get difficulty level
+;To select and get difficulty level
+    mov eax, 11
+    call setTextColor
     call displayDifficultyPrompt
+    mov eax, 14
+    call setTextColor
     call getDifficultyInput
 
-    ; Set the random range and max attempts based on difficulty
+;To set random range and max attempts based on difficulty
     call setDifficultyRange
 
-    ; Generate the random number
+;To generate the random number
     call generateRandomNumber
 
-    ; Initialize attempts and scores
+;To initialize attempts and scores
     mov attempts, 0
     call initializeScores
 
 guessLoop:
-    ; Check if maximum attempts reached
-    mov eax, attempts         ; Load attempts into eax
-    mov ebx, maxAttempts      ; Load maxAttempts into ebx
-    cmp eax, ebx              ; Compare attempts with maxAttempts
-    jge endGame               ; If attempts >= maxAttempts, go to endGame
+;To check if max attempts reached or not
+    push eax
+    push ebx
+    mov eax, attempts       
+    mov ebx, maxAttempts
+    cmp eax, ebx            
+    pop ebx
+    pop eax
+    jge endGame              
 
-    ; Switch turns between players
+;To switch turns between players
     call switchPlayer
+    mov eax, 11
+    call setTextColor
 
-    ; Prompt the current player for a guess
+;To get current player for guess
     call promptGuess
+    mov eax, 7
+    call setTextColor
     call getGuessInput
 
-    ; Increment attempts
     inc attempts
 
-    ; Compare guess with the secret number
+;To compare guess with the secret num
     call checkGuess
     mov eax, guess
     cmp eax, secretnUMBER
@@ -75,11 +91,13 @@ guessLoop:
     jmp guessLoop
 
 correctAnswer:
-    call updatePlayerScore   ; Increment the player's score
-    jmp endRound             ; Skip remaining guesses and end the round
+    call updatePlayerScore   
+    mov eax, 15                  
+    call setTextColor
+    jmp endRound            
 
 endRound:
-    ; Reset attempts for the next round
+;To reset attempts for next round
     mov attempts, 0
     CALL DisplayScores
     call displayPlayAgainPrompt
@@ -89,9 +107,13 @@ endRound:
     EXIT
 
 endGame:
-    ; Display result and ask to play again
+;To display result and ask to play again
+    mov eax, 12                  
+    call setTextColor
     call revealAnswer
     call displayScores
+    mov eax, 11                  
+    call setTextColor
     call displayPlayAgainPrompt
     call getPlayAgainInput
     CALL CRLF
@@ -103,34 +125,44 @@ endGame:
 main ENDP
 
 displayIntro PROC
+    pushfd
+    push edx
+    mov eax, 10                  
+    call setTextColor
     mov edx, OFFSET introMsg
-    call WriteString
+    invoke WriteString
     call Crlf
+    pop edx
+    popfd
     ret
 displayIntro ENDP
 
 PlayerCountprocedure PROC
+    push edx
     mov edx, OFFSET promptPlayerCount
-    call WriteString
+    invoke WriteString
+    pop edx
     ret
 PlayerCountprocedure ENDP
 
 getPlayerCountInput PROC
-enter 0, 0                   ; Set up stack frame
-    push edx                      ; Save registers that might be modified
-    push eax  
+  enter 0, 0                   
+    push edx                      
+    push eax                     
     call ReadInt
     mov playerCount, eax
     cmp eax, 1
     jl invalidPlayerInput
     cmp eax, maxPlayers
     jg invalidPlayerInput
-    pop eax                       ; Restore eax
-    pop edx                       ; Restore edx
-    leave
+    pop eax                       
+    pop edx                      
+    leave                         
     ret
 
 invalidPlayerInput:
+    mov eax, 12                  
+    call setTextColor
     mov edx, OFFSET invalidInputMsg
     invoke WriteString
     call Crlf
@@ -138,97 +170,130 @@ invalidPlayerInput:
 getPlayerCountInput ENDP
 
 initializeScores PROC
-    ; Initialize scores array to 0
+;To initialize scores to 0
+    push esi
+    push ecx
     mov ecx, maxPlayers
     mov esi, OFFSET scores
 initLoop:
     mov DWORD PTR [esi], 0
     add esi, 4
     loop initLoop
+    pop ecx
+    pop esi
     ret
 initializeScores ENDP
 
 displayDifficultyPrompt PROC
+    push edx
     mov edx, OFFSET promptLevel
-    call WriteString
+    invoke WriteString
+    pop edx
     ret
 displayDifficultyPrompt ENDP
 
 getDifficultyInput PROC
-    ; Get user input for difficulty and validate
-    call ReadInt
-    mov difficulty, eax
-    cmp eax, 1
+;To get user input for difficulty 
+    enter 0, 0                
+    call ReadInt             
+    mov difficulty, eax       
+
+    cmp eax, 1               
     je easyLevel
-    cmp eax, 2
+    cmp eax, 2                
     je mediumLevel
-    cmp eax, 3
+    cmp eax, 3                
     je hardLevel
+
+invalidInput:
+    push edx                  
     mov edx, OFFSET invalidInputMsg
-    call WriteString
+    call WriteString         
     call Crlf
-    jmp getDifficultyInput
+    pop edx                   
+    jmp getDifficultyInput    
 
 easyLevel:
-    mov eax, 10       ; Easy range
-    mov maxAttempts, 5
-    ret
+    mov eax, 1                
+    shl eax, 3               
+    add eax, 2               
+    mov ecx, eax
+    mov maxAttempts, 5       
+    jmp exitProcedure
+
 mediumLevel:
-    mov eax, 50       ; Medium range
-    mov maxAttempts, 5
-    ret
+    mov eax, 3                
+    shl eax, 4                
+    add eax, 2                
+    mov ecx, eax
+    mov maxAttempts, 5        
+    jmp exitProcedure
+
 hardLevel:
-    mov eax, 100      ; Hard range
-    mov maxAttempts, 5
-    ret
+    mov eax, 6                
+    ror eax, 1              
+    shl eax, 5               
+    add eax, 4                
+    mov ecx, eax
+    mov maxAttempts, 5        
+    jmp exitProcedure
+
+exitProcedure:
+    leave                    
+    ret                       
 getDifficultyInput ENDP
 
 setDifficultyRange PROC
-    ; Set the random number range according to difficulty level
-    mov ecx, eax       ; Range is stored in ecx for RandomRange
+;To set the random num range according to diffi level
+    mov ecx, eax      
     ret
 setDifficultyRange ENDP
 
 generateRandomNumber PROC
-    ; Generate random number within selected range
+;To generate random num within range
     call RandomRange
     mov secretNumber, eax
     ret
 generateRandomNumber ENDP
 
 switchPlayer PROC
-    ; Switch to the next player
+;To switch to the next player
+    push eax
     mov eax, currentPlayer
     inc eax
     cmp eax, playerCount
     jl validPlayer
-    mov eax, 0         ; Reset to player 1 if exceeded player count
+    mov eax, 0         
 validPlayer:
     mov currentPlayer, eax
+    pop eax
     ret
 switchPlayer ENDP
 
 promptGuess PROC
+    push edx
+    mov eax, 13                  
+    call setTextColor
     mov edx, OFFSET guessPrompt
     call WriteString
     mov eax, currentPlayer
     call Writedec
     call Crlf
-    ;add eax, 1         ; Display player number (1-based)
-    ;call WriteInt
-    ;call Crlf
+    pop edx
     ret
 promptGuess ENDP
 
 getGuessInput PROC
-    ; Get user's guess
+;To get user's guess
     call ReadInt
     mov guess, eax
     ret
 getGuessInput ENDP
 
 checkGuess PROC
-    ; Check if guess is correct, too high, or too low
+;To Check if guess is correct, too high, or too low
+    push edx
+    push eax
     cmp eax, secretNumber
     jl tooLow
     jg tooHigh
@@ -238,12 +303,16 @@ tooLow:
     mov edx, OFFSET tooLowMsg
     call WriteString
     call Crlf
+    POP eax                   
+    POP edx                    
     ret
 
 tooHigh:
     mov edx, OFFSET tooHighMsg
     call WriteString
     call Crlf
+    POP eax                   
+    POP edx                    
     ret
 
 correctGuess:
@@ -255,34 +324,55 @@ correctGuess:
     mov edx, OFFSET correctMsg2
     call WriteString
     call Crlf
+    POP eax                    
+    POP edx                    
     ret
 checkGuess ENDP
 
 updatePlayerScore PROC
-    ; Increment the current player's score
-    mov eax, currentPlayer      ; Get the current player index
-    ;dec eax                     ; Convert 1-based index to 0-based index if necessary
+;To increment current player's score
+    mov eax, currentPlayer                         
     mov ecx, eax
-    mov eax, 4                  ; Size of each score (4 bytes)
-    mul ecx                     ; eax = currentPlayer * 4
-    add eax, OFFSET scores      ; Address of the current player's score
-    inc DWORD PTR [eax]         ; Increment the score
+    mov eax, 4                 
+    mul ecx                     
+    add eax, OFFSET scores     
+    inc DWORD PTR [eax]         
     ret
 updatePlayerScore ENDP
 
 
 revealAnswer PROC
-    ; Display the correct answer if attempts exhausted
-    mov edx, OFFSET revealMsg
-    call WriteString
-    mov eax, secretNumber
-    call WriteInt
-    call Crlf
+    enter 0, 0               
+    push eax                 
+    push edx
+
+;To display the reveal message
+    lea edx, revealMsg       
+    call WriteString        
+
+;To display the secret num
+    mov eax, secretNumber    
+    imul eax, 1              
+    mov ecx, 10
+    cdq                   
+    idiv ecx                 
+                             
+    add eax, edx             
+    call WriteInt         
+    call Crlf                
+
+;To Clean space and return
+    pop edx                  
+    pop eax
+    leave                   
     ret
 revealAnswer ENDP
 
+
 displayScores PROC
-    ; Display scores for all players
+;To display scores for all players
+    mov eax, 15                  
+    call setTextColor
     mov ecx, playerCount
     mov esi, OFFSET scores
     mov edx, OFFSET highScoreMsg
@@ -304,8 +394,8 @@ displayPlayAgainPrompt PROC
 displayPlayAgainPrompt ENDP
 
 getPlayAgainInput PROC
-    call ReadChar
-    ret
-getPlayAgainInput ENDP
+    call ReadChar               
+    ret                         
+getPlayAgainInput ENDP          
 
-END main
+end main                        
